@@ -11,7 +11,7 @@ pub struct Markov {
 }
 
 impl Markov {
-    pub fn new(depth: usize, name: impl ToString + std::fmt::Debug) -> Self {
+    pub fn new(depth: usize, name: impl ToString) -> Self {
         Self {
             depth,
             name: name.to_string(),
