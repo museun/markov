@@ -1,3 +1,5 @@
+use fastrand_ext::IterExt;
+
 use crate::*;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -19,9 +21,9 @@ impl Markov {
     }
 
     // TODO make this trait-based so the desired behavior can be specified
-    pub fn generate<R: ?Sized + Rng>(
+    pub fn generate(
         &self,
-        rng: &mut R,
+        rng: &fastrand::Rng,
         min: usize,
         max: usize,
         query: Option<&str>,
@@ -31,8 +33,7 @@ impl Markov {
             &words[words.len().saturating_sub(depth)..]
         };
 
-        let chances = [rng.gen_range(0.10, 0.40), rng.gen_range(0.10, 0.40)];
-        let mut desired = rng.gen_range(1, 3);
+        let mut desired = rng.usize(1..=3);
         let mut last = false;
 
         log::trace!(target: "brain", "min: {}, max: {}, query: {:?}", min, max, query);
@@ -41,7 +42,7 @@ impl Markov {
         let mut count = 0;
         loop {
             match query {
-                Some(query) if rng.gen_bool(chances[0]) && desired > 0 && !last => {
+                Some(query) if rng.f64() > 0.40 && desired > 0 && !last => {
                     words.push(query.as_bytes().to_vec());
                     desired -= 1;
                     last = true;
@@ -61,7 +62,7 @@ impl Markov {
             while let Token::Word(word) = self.next_word(rng, context(words.as_slice(), self.depth))
             {
                 if let Some(query) = query {
-                    if rng.gen_bool(chances[1]) && desired > 0 && !last {
+                    if rng.f64() > 0.40 && desired > 0 && !last {
                         words.push(query.as_bytes().to_vec());
                         desired -= 1;
                     }
@@ -93,7 +94,7 @@ impl Markov {
             .flat_map(std::str::from_utf8)
             .fold(String::new(), |mut acc, str| {
                 if !acc.is_empty() {
-                    acc.push_str(" ")
+                    acc.push(' ')
                 }
                 acc.push_str(str);
                 acc
@@ -142,7 +143,7 @@ impl Markov {
             .insert(token);
     }
 
-    fn next_word<R: ?Sized + Rng>(&self, rng: &mut R, context: &[Vec<u8>]) -> Token {
+    fn next_word(&self, rng: &fastrand::Rng, context: &[Vec<u8>]) -> Token {
         let upper = std::cmp::min(self.depth, context.len());
         let mut link_sets = (1..=upper)
             .filter_map(|width| {
@@ -174,12 +175,12 @@ impl Markov {
     }
 }
 
-fn weighted_selection<'a, R: ?Sized + Rng>(rng: &mut R, links: &'a [Link]) -> &'a Link {
+fn weighted_selection<'a>(rng: &fastrand::Rng, links: &'a [Link]) -> &'a Link {
     let total_count = links.iter().map(|l| l.count).sum::<usize>();
     links
         .iter()
         .cycle()
-        .skip(rng.gen_range(0, total_count))
+        .skip(rng.usize(0..total_count))
         .scan(total_count, |remaining, link| {
             *remaining = remaining.saturating_sub(link.count);
             Some((*remaining, link))

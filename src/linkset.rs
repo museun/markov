@@ -36,7 +36,7 @@ impl std::ops::DerefMut for LinkSet {
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
 pub struct Link {
     pub token: Token,
     pub count: usize,
@@ -61,6 +61,13 @@ impl PartialEq for Link {
     #[inline(always)]
     fn eq(&self, rhs: &Self) -> bool {
         self.count.eq(&rhs.count)
+    }
+}
+
+impl PartialOrd for Link {
+    #[inline(always)]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.count.partial_cmp(&other.count)
     }
 }
 
